@@ -4,7 +4,7 @@ HWP·HWPX·PDF·DOCX·XLSX 문서를 Markdown으로 바꾸고, 신구대조·양
 
 ## 설치
 
-[Releases](../../releases)에서 `DocConverter-Setup-<버전>.exe`를 받아 실행합니다. Node.js를 따로 설치할 필요는 없습니다.
+공개 배포 저장소 [DocConverter-release](https://github.com/backaura-droid/DocConverter-release/releases/latest)에서 `DocConverter-Setup-<버전>.exe`를 받아 실행합니다. Node.js를 따로 설치할 필요는 없습니다. 이 저장소는 비공개이므로, 다른 사람에게는 배포 저장소 주소를 알려 줍니다.
 
 ## 기능
 
@@ -63,6 +63,8 @@ npm start                   # 실행
 npm test                    # 단위 시험
 npm run dist                # 설치본 생성 → dist/
 ```
+
+새 버전을 배포할 때는 `package.json`의 `version`을 올리고 `npm run dist`로 설치본을 만듭니다. 그다음 이 저장소와 공개 배포 저장소(`backaura-droid/DocConverter-release`) 양쪽 Releases에 같은 태그로 올립니다. 공개 쪽에는 설치파일만 올립니다.
 
 통합 시험과 화면 시험은 실제 문서가 든 폴더가 필요합니다.
 
