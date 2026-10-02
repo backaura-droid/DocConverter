@@ -1,7 +1,7 @@
 {
   "name": "docconverter",
   "productName": "DocConverter",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "kordoc 기반 한국 문서 변환 도구",
   "author": "Backaura",
   "license": "UNLICENSED",
