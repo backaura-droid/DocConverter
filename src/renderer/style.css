@@ -140,8 +140,27 @@ button, input, select { font: inherit; color: inherit; }
 .engine-update p { margin: 0 0 8px; }
 .copyright { margin: 14px 0 0; font-size: 11px; color: var(--ink-3); }
 
+/* 테마 스위치(iOS식, 작업 영역 오른쪽 위 제목 줄): 왼쪽 라이트 · 오른쪽 다크, 지금 쪽 글자를 진하게 */
+.theme { position: absolute; top: 40px; right: 28px; z-index: 1; display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-3); cursor: pointer; user-select: none; }
+.theme:has(.switch:not(:checked)) span:first-child,
+.theme:has(.switch:checked) span:last-child { color: var(--ink); font-weight: 700; }
+.switch {
+  appearance: none; position: relative; flex: none;
+  width: 42px; height: 24px; margin: 0;
+  border-radius: 12px; background: var(--rule-strong);
+  cursor: pointer; transition: background-color 200ms;
+}
+.switch::before {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #fff; box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
+  transition: transform 220ms cubic-bezier(0.3, 0.7, 0.4, 1.1);
+}
+.switch:checked { background: var(--navy); }
+.switch:checked::before { transform: translateX(18px); }
+
 /* 작업 영역 */
-main { overflow-y: auto; min-width: 0; }
+main { overflow-y: auto; min-width: 0; position: relative; }
 .panel { max-width: 860px; padding: 34px 40px 48px; }
 .panel-head h1 { margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.035em; }
 .panel-head p { margin: 6px 0 24px; color: var(--ink-2); max-width: 62ch; }

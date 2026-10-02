@@ -1,5 +1,5 @@
 // DocConverter 메인 프로세스: 창 생성·IPC·엔진 관리·작업 실행
-const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
@@ -18,6 +18,14 @@ const engine = createEngine({
   vcDir: res('vcruntime', 'vcruntime'),
 });
 const compareScript = path.join(__dirname, 'compare.mjs').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
+const noOcrCache = path.join(os.tmpdir(), 'docconverter-no-ocr-models'); // 늘 비어 있는 OCR 모델 캐시
+fs.mkdirSync(noOcrCache, { recursive: true });
+
+// 사용자가 고른 화면 테마('light'|'dark')를 창보다 먼저 적용한다. 고른 적 없으면 시스템 설정을 따른다
+const themeFile = path.join(app.getPath('userData'), 'theme.json');
+try {
+  nativeTheme.themeSource = JSON.parse(fs.readFileSync(themeFile, 'utf8'));
+} catch {}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -26,7 +34,7 @@ function createWindow() {
     minWidth: 760,
     minHeight: 560,
     title: 'DocConverter',
-    backgroundColor: '#f6f5f2',
+    backgroundColor: nativeTheme.shouldUseDarkColors ? '#12151b' : '#eef0f2',
     autoHideMenuBar: true,
     webPreferences: { preload: path.join(__dirname, '..', 'preload.js') },
   });
@@ -70,9 +78,10 @@ const handlers = {
     else shell.showItemInFolder(p);
   },
 
-  // 일괄 변환: 파일 하나씩 차례로, 실패해도 계속, 취소 가능
+  // 일괄 변환: 파일 하나씩 차례로, 실패해도 계속, 취소·지금 파일 건너뛰기 가능
   async convert(e, opts) {
     convertAbort = new AbortController();
+    skipOcr = !!opts.skipOcr;
     const { signal } = convertAbort;
     const jobs = plan(collect(opts.inputs), opts);
     const send = (m) => !e.sender.isDestroyed() && e.sender.send('convert:progress', { total: jobs.length, ...m });
@@ -81,21 +90,43 @@ const handlers = {
 
     for (const [i, j] of jobs.entries()) {
       if (signal.aborted) break;
+      const skip = (reason) => (result.skipped++, send({ i, src: j.src, out: j.out, status: 'skipped', reason }));
       if (j.skip) {
-        result.skipped++;
-        send({ i, src: j.src, out: j.out, status: 'skipped' });
+        skip();
         continue;
       }
       send({ i, src: j.src, status: 'running' });
       fs.mkdirSync(path.dirname(j.out), { recursive: true });
-      const args = [j.src, '-o', j.out, ...(opts.pages ? ['-p', opts.pages] : [])];
-      let r = await run(cliPath, args, { signal });
-      // 스캔 PDF는 OCR로 한 번 더 시도(첫 사용 때 모델 약 18MB 내려받음)
-      if (r.code !== 0 && failureCode(r.stdout) === 'IMAGE_BASED_PDF') {
-        send({ i, src: j.src, status: 'running', note: 'OCR' });
-        r = await run(cliPath, [...args, '--ocr'], { signal });
+      fileAbort = new AbortController();
+      const fileSignal = AbortSignal.any([signal, fileAbort.signal]);
+      const pages = opts.pages ? ['-p', opts.pages] : [];
+      const args = [j.src, '-o', j.out, ...pages];
+      // OCR 건너뛰기: 엔진은 OCR 모델 캐시가 있으면 스캔 쪽을 자동 OCR한다(README). 빈 캐시 폴더를 주면 OCR 없이 읽는다
+      const env = skipOcr ? { KORDOC_MODEL_CACHE: noOcrCache } : undefined;
+      let r;
+      if (env && path.extname(j.src).toLowerCase() === '.pdf') {
+        // 스캔 PDF인지 출력 파일을 만들지 않고 먼저 본다(OCR 없는 읽기는 쪽당 0.04초)
+        r = await run(cliPath, [j.src, '--format', 'json', '--no-images', '--silent', ...pages], { signal: fileSignal, env });
+        if (r.code === 0 && r.stdout.includes('"isImageBased": true')) {
+          skip('OCR이 필요해 건너뜀');
+          continue;
+        }
       }
-      if (r.code === null) break;
+      if (!r || r.code !== null) r = await run(cliPath, args, { signal: fileSignal, env });
+      // 스캔 PDF는 OCR로 한 번 더 시도(첫 사용 때 모델 약 18MB 내려받음). skipOcr는 변환 중에도 바뀔 수 있다
+      if (r.code !== 0 && failureCode(r.stdout) === 'IMAGE_BASED_PDF') {
+        if (skipOcr) {
+          skip('OCR이 필요해 건너뜀');
+          continue;
+        }
+        send({ i, src: j.src, status: 'running', note: 'OCR' });
+        r = await run(cliPath, [...args, '--ocr'], { signal: fileSignal });
+      }
+      if (r.code === null) {
+        if (signal.aborted) break;
+        skip('사용자가 건너뜀');
+        continue;
+      }
       if (r.code === 0) {
         result.ok++;
         send({ i, src: j.src, out: j.out, status: 'done' });
@@ -111,6 +142,14 @@ const handlers = {
 
   cancelConvert() {
     convertAbort?.abort();
+  },
+
+  skipFile() {
+    fileAbort?.abort();
+  },
+
+  setSkipOcr(e, on) {
+    skipOcr = !!on;
   },
 
   async compare(e, { a, b, out }) {
@@ -185,9 +224,20 @@ const handlers = {
     engine.rollback();
     return engine.active();
   },
+
+  theme() {
+    return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
+  },
+
+  setTheme(e, theme) {
+    nativeTheme.themeSource = theme;
+    fs.writeFileSync(themeFile, JSON.stringify(theme));
+  },
 };
 
 let convertAbort;
+let fileAbort;
+let skipOcr = false;
 for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(name, fn);
 
 app.whenReady().then(createWindow);

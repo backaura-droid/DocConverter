@@ -7,6 +7,6 @@ contextBridge.exposeInMainWorld('api', {
   pathOf: (file) => webUtils.getPathForFile(file),
   onProgress: (fn) => ipcRenderer.on('convert:progress', (_e, m) => fn(m)),
   ...Object.fromEntries(
-    ['pick', 'stat', 'readText', 'writeText', 'reveal', 'convert', 'cancelConvert', 'compare', 'formFields', 'fill', 'generate', 'help', 'engineInfo', 'engineLatest', 'engineUpdate', 'engineRollback'].map((n) => [n, call(n)]),
+    ['pick', 'stat', 'readText', 'writeText', 'reveal', 'convert', 'cancelConvert', 'skipFile', 'setSkipOcr', 'compare', 'formFields', 'fill', 'generate', 'help', 'engineInfo', 'engineLatest', 'engineUpdate', 'engineRollback', 'theme', 'setTheme'].map((n) => [n, call(n)]),
   ),
 });

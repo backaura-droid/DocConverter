@@ -21,13 +21,13 @@ const REASONS = {
 const shim = path.join(__dirname, 'node-shim.cjs').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 
 // script를 node로 실행 → {code, stdout, stderr}. signal로 취소하면 code는 null
-function run(script, args, { signal, cwd } = {}) {
+function run(script, args, { signal, cwd, env } = {}) {
   return new Promise((resolve) => {
     const child = spawn(process.execPath, [shim, script, ...args], {
       cwd,
       signal,
       windowsHide: true,
-      env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+      env: { ...process.env, ...env, ELECTRON_RUN_AS_NODE: '1' },
     });
     let stdout = '';
     let stderr = '';

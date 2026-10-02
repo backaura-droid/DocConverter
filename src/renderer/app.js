@@ -179,9 +179,9 @@ $('#dest-pick').onclick = async () => {
 api.onProgress((m) => {
   const done = m.status === 'running' ? m.i : m.i + 1;
   $('#convert-bar').style.width = `${(done / m.total) * 100}%`;
-  const label = { running: m.note === 'OCR' ? 'OCR로 다시 읽는 중' : '변환 중', done: '완료', skipped: '건너뜀(이미 있음)', failed: '실패' }[m.status];
+  const label = { running: m.note === 'OCR' ? 'OCR로 다시 읽는 중' : '변환 중', done: '완료', skipped: `건너뜀(${m.reason || '이미 있음'})`, failed: '실패' }[m.status];
   $('#convert-status').textContent = `${m.i + 1} / ${m.total} · ${label} · ${base(m.src)}`;
-  if (m.status === 'failed') addFailure(m.src, m.reason);
+  if (m.status === 'failed' || (m.status === 'skipped' && m.reason)) addFailure(m.src, m.reason);
 });
 
 function addFailure(src, reason) {
@@ -201,6 +201,7 @@ $('#convert-run').onclick = async () => {
   convert.running = true;
   updateConvertRun();
   $('#convert-cancel').hidden = false;
+  $('#convert-skip').hidden = false;
   $('#convert-report').hidden = false;
   $('#convert-summary').hidden = true;
   $('#convert-failures').replaceChildren();
@@ -212,6 +213,7 @@ $('#convert-run').onclick = async () => {
       outDir: toFolder ? convert.outDir : null,
       pages: $('#pages').value.trim() || null,
       overwrite: $('#overwrite').checked,
+      skipOcr: $('#skip-ocr').checked,
     });
     showSummary(r);
   } catch (err) {
@@ -219,10 +221,19 @@ $('#convert-run').onclick = async () => {
   } finally {
     convert.running = false;
     $('#convert-cancel').hidden = true;
+    $('#convert-skip').hidden = true;
     updateConvertRun();
   }
 };
 $('#convert-cancel').onclick = () => api.cancelConvert();
+$('#convert-skip').onclick = () => api.skipFile();
+// 변환 중에 바꿔도 남은 문서에 바로 적용한다
+$('#skip-ocr').onchange = () => api.setSkipOcr($('#skip-ocr').checked);
+
+/* ── 화면 테마 ── */
+const themeSwitch = $('#theme');
+api.theme().then((t) => (themeSwitch.checked = t === 'dark'));
+themeSwitch.onchange = () => api.setTheme(themeSwitch.checked ? 'dark' : 'light');
 
 function showSummary(r) {
   if (!r.total) {
@@ -230,12 +241,13 @@ function showSummary(r) {
     return;
   }
   const failed = r.failed.length;
+  const listed = $('#convert-failures').childElementCount; // 실패 + 사유 있는 건너뜀(OCR·사용자)
   $('#convert-status').textContent = r.canceled ? '변환을 취소했습니다.' : '변환을 마쳤습니다.';
   $('#summary-title').textContent = r.canceled ? `${r.ok}건 변환 후 취소` : `${r.ok}건 변환`;
   $('#summary-sub').textContent = [`전체 ${r.total}건`, r.skipped && `건너뜀 ${r.skipped}건`, failed && `실패 ${failed}건`].filter(Boolean).join(' · ');
   const seal = $('#seal');
-  seal.classList.toggle('partial', failed > 0 || r.canceled);
-  $('span', seal).textContent = r.canceled ? '취소' : failed ? '확인' : '완료';
+  seal.classList.toggle('partial', listed > 0 || r.canceled);
+  $('span', seal).textContent = r.canceled ? '취소' : listed ? '확인' : '완료';
   $('#convert-summary').hidden = false;
   seal.classList.remove('stamp');
   void seal.offsetWidth; // 애니메이션 다시 시작
