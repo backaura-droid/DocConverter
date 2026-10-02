@@ -12,6 +12,10 @@
 
 - **v2.0.1 용량 정리(설치 폴더 787.5MB → 556.4MB, 설치파일 254MB → 170MB)**: 사용자가 "설치된 앱" 목록의 965MB(NSIS가 등록한 `EstimatedSize` 추정치)를 보고 물었다. 실측해 보니 엔진 407MB 중 `onnxruntime-web` 141MB와 `onnxruntime-node`의 리눅스·맥·ARM64 바이너리 약 47MB가 Windows x64에서는 쓰이지 않았다. `onnxruntime-web`은 수식 OCR용 `@huggingface/transformers`의 의존성이지만, node 빌드(`transformers.node.mjs`)는 그 코드를 내장하고 계산은 `onnxruntime-node`로 한다. `pruneEngine()`으로 지우고, 빌드(`scripts/prepare-engine.cjs`)와 엔진 업데이트(`install()`) 양쪽에 적용한다. Electron 언어 파일은 `electronLanguages: ["ko", "en-US"]`로 55개에서 2개로 줄였다(48MB → 1.2MB). 정리한 뒤 수식 OCR 모듈 불러오기, 이미지 OCR, 일괄 변환, 엔진 업데이트를 모두 다시 확인했다.
 
+- **OCR 건너뛰기(2026-10-02)**: 엔진 4.18.x는 `--ocr` 없이도 OCR 모델 캐시가 있으면 스캔 쪽을 자동 OCR한다(README "기본값은 OCR 모델이 캐시에 있으면…"). 그래서 기존의 "`IMAGE_BASED_PDF` 실패 → `--ocr` 재시도" 경로는 모델을 한 번 받은 뒤로는 타지 않는다. CLI에는 OCR을 끄는 옵션이 없다(`--ocr`·`--ocr-force`만 있음). 끄는 방법은 `KORDOC_MODEL_CACHE`를 늘 빈 폴더로 주는 것이다. 이러면 자동 OCR이 꺼지고 모델 다운로드도 하지 않는다(실측 4쪽 19.5초 → 2.2초, 빈 폴더 그대로). 다만 OCR 없이 읽은 스캔 PDF는 실패가 아니라 그림 링크만 든 .md로 "성공"한다. 그래서 OCR 건너뛰기가 켜진 PDF는 먼저 `--format json --no-images --silent`로 읽어 `isImageBased`를 보고, 스캔이면 출력 파일을 만들지 않고 건너뛴다. 글자층과 스캔 쪽이 섞인 PDF는 스캔 쪽 글 없이 변환된다.
+- **지금 파일 건너뛰기**: 파일마다 `AbortController`를 두고 `AbortSignal.any([전체 취소, 파일 취소])`로 엔진 프로세스를 끊는다. `skipOcr`는 모듈 변수로 두고 체크가 바뀔 때마다 `setSkipOcr` IPC로 갱신해 남은 파일부터 적용한다.
+- **테마 스위치**: CSS는 이미 `prefers-color-scheme`로 다크 색을 갖고 있어서 `nativeTheme.themeSource`만 바꾼다. 선택은 `userData/theme.json`에 두고 창을 만들기 전에 적용한다(창 배경색도 맞춤). 처음엔 왼쪽 메뉴 아래에 뒀으나 최소 창(760×560)에서 "새 엔진" 안내가 뜨면 화면 밖으로 밀려 작업 영역 오른쪽 위로 옮겼다.
+
 ## 시행착오
 
 - **`fill -j`에 BOM 있는 JSON을 주면 실패**: PowerShell `Out-File -Encoding utf8`로 만든 JSON을 넘기면 `[kordoc] 오류: 문서 처리 중 오류가 발생했습니다`(exit 1)가 난다. BOM 없는 UTF-8로 쓰면 정상이다. 앱은 값 JSON을 직접(BOM 없이) 쓰고, 사용자가 불러온 JSON은 BOM을 제거한 뒤 다시 쓴다.
@@ -24,6 +28,9 @@
 - **화면 캡처는 색 전환이 끝난 뒤에**: `emulateMedia` 직후 바로 캡처하면 transition 중간색(다크인데 흰 상자)이 찍힌다. 400ms 기다린 뒤 캡처한다.
 
 - **electron-builder `extraResources`는 안쪽 `node_modules`를 빼고 복사한다**: 설치본에서 `resources/npm`만 깨져 `Cannot find module 'graceful-fs'`가 났다(개발 환경에서는 통과). `node_modules/npm/node_modules`를 별도 항목으로 추가해 해결했다. 내장 엔진은 `from`이 `node_modules` 자체라 중첩 폴더 4개가 그대로 들어갔다. 설치본을 만들면 반드시 **설치된 exe**로 npm과 엔진을 한 번씩 실행해 본다.
+
+- **Playwright는 기본으로 라이트 색 구성표를 흉내 낸다**: 테마 스위치로 `nativeTheme`을 다크로 바꿔도 시험 화면은 라이트 그대로였다(`matchMedia('(prefers-color-scheme: dark)')`가 false). `page.emulateMedia({ colorScheme: null })`로 흉내를 끄면 실제 값이 보인다.
+- **화면 시험 표본으로 `resources/smoke`를 넘기지 말 것**: 변환 결과 .md가 그 안에 생기고, 엔진 시험 변환(`smoke()`)이 폴더 안 파일을 전부 변환하므로 설치본까지 오염된다. 임시 사본을 넘긴다. 통합 시험은 `ELECTRON_RUN_AS_NODE=1 electron test/integration.mjs <표본>`으로 돌려야 하며 `npm run test:integration`(일반 node)은 첫 assert에서 멈춘다.
 
 ## kordoc 4.18.3 출력 형식 메모
 

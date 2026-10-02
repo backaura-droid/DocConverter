@@ -11,3 +11,5 @@
 - [x] 9. 커밋·푸시·GitHub Releases v2.0.0 업로드 → 검증: 릴리스 첨부 파일 확인(254,260,779바이트, 로컬과 일치)
 - [x] 10. 위키 기록(04_앱개발실 wiki/projects/DocConverter/) → 검증: index·log 반영
 - [x] 11. (추가) VC++ 런타임 없는 PC 대비 DLL 동봉 → 검증: 설치본에서 동봉 DLL이 로드되는지 `process.report`로 확인
+- [x] 12. (추가) OCR 건너뛰기 체크·이 파일 건너뛰기 버튼(변환 중 체크도 남은 문서에 적용) → 검증: `test/ui.mjs` 스캔 PDF 2개 시나리오 통과
+- [x] 13. (추가) 라이트·다크 iOS식 스위치(`nativeTheme`, 선택 저장) → 검증: `test/ui.mjs` 배경색·최소 창 표시 확인
