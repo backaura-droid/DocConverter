@@ -19,6 +19,8 @@
 - **PowerShell 5.1로 UTF-8 파일을 고치지 말 것**: `Get-Content`가 BOM 없는 UTF-8을 ANSI로 읽어 package.json의 한글이 깨졌다. 파일 수정은 Edit 도구로 하거나 `[IO.File]::ReadAllText/WriteAllText`(UTF8 BOM 없음)를 쓴다.
 - **화면 캡처는 색 전환이 끝난 뒤에**: `emulateMedia` 직후 바로 캡처하면 transition 중간색(다크인데 흰 상자)이 찍힌다. 400ms 기다린 뒤 캡처한다.
 
+- **electron-builder `extraResources`는 안쪽 `node_modules`를 빼고 복사한다**: 설치본에서 `resources/npm`만 깨져 `Cannot find module 'graceful-fs'`가 났다(개발 환경에서는 통과). `node_modules/npm/node_modules`를 별도 항목으로 추가해 해결했다. 내장 엔진은 `from`이 `node_modules` 자체라 중첩 폴더 4개가 그대로 들어갔다. 설치본을 만들면 반드시 **설치된 exe**로 npm과 엔진을 한 번씩 실행해 본다.
+
 ## kordoc 4.18.3 출력 형식 메모
 
 - `fill <파일> --dry-run --silent`는 stdout에 `{fields:[...], confidence, clickHereFields:[{name, placeholder, value, section}]}`를 낸다. 필드가 없으면 stderr에 `서식 필드를 찾을 수 없습니다.`를 내고 exit 1로 끝난다.

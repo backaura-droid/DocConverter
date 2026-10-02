@@ -30,6 +30,7 @@
     "extraResources": [
       { "from": "engine/node_modules", "to": "engine/node_modules" },
       { "from": "node_modules/npm", "to": "npm" },
+      { "from": "node_modules/npm/node_modules", "to": "npm/node_modules" },
       { "from": "resources/smoke", "to": "smoke" }
     ],
     "win": { "target": "nsis", "icon": "build/icon.png" },
