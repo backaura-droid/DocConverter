@@ -1,0 +1,228 @@
+<!doctype html>
+<!-- DocConverter 화면: 왼쪽 도구 목록 + 오른쪽 작업 영역 -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:">
+  <title>DocConverter</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <aside class="rail">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <strong>DocConverter</strong>
+        <small>한국 문서를 Markdown으로</small>
+      </div>
+    </div>
+
+    <nav class="tools" role="tablist" aria-label="도구">
+      <button role="tab" data-tab="convert" aria-selected="true" data-testid="tab-convert">문서 변환<small>HWP·PDF·엑셀 → MD</small></button>
+      <button role="tab" data-tab="compare" aria-selected="false" data-testid="tab-compare">신구대조<small>두 문서 차이를 표로</small></button>
+      <button role="tab" data-tab="extract" aria-selected="false" data-testid="tab-extract">양식 추출<small>빈칸·누름틀 목록</small></button>
+      <button role="tab" data-tab="fill" aria-selected="false" data-testid="tab-fill">양식 채우기<small>서식 그대로 값 넣기</small></button>
+      <button role="tab" data-tab="generate" aria-selected="false" data-testid="tab-generate">HWPX 생성<small>MD → 공문서 HWPX</small></button>
+    </nav>
+
+    <section class="engine" data-testid="engine">
+      <div class="engine-row">
+        <span>kordoc 엔진</span>
+        <strong id="engine-version">—</strong>
+      </div>
+      <p id="engine-source" class="engine-note"></p>
+      <div id="engine-update" class="engine-update" hidden>
+        <p>새 엔진 <strong id="engine-latest"></strong>이 나왔습니다.</p>
+        <button class="btn btn-primary btn-small" id="engine-update-btn" data-testid="engine-update">엔진 업데이트</button>
+      </div>
+      <button class="link" id="engine-rollback" hidden>이전 엔진으로 되돌리기</button>
+      <p class="copyright">© Backaura · v2.0.0</p>
+    </section>
+  </aside>
+
+  <main>
+    <!-- 문서 변환 -->
+    <section class="panel" id="panel-convert" role="tabpanel">
+      <header class="panel-head">
+        <h1>문서 변환</h1>
+        <p>파일이나 폴더를 넣으면 Markdown(.md)으로 바꿉니다. 폴더는 하위 폴더까지 찾아 각 문서 옆에 저장합니다.</p>
+      </header>
+
+      <div class="drop" id="convert-drop" data-testid="convert-drop">
+        <div class="drop-empty" id="convert-empty">
+          <p class="drop-title">문서나 폴더를 여기에 끌어다 놓으세요</p>
+          <p class="drop-sub">HWP · HWPX · PDF · DOCX · XLSX</p>
+          <div class="row">
+            <button class="btn" data-pick="files">파일 선택</button>
+            <button class="btn" data-pick="folder">폴더 선택</button>
+          </div>
+        </div>
+        <ul class="queue" id="convert-queue" data-testid="convert-queue" hidden></ul>
+        <div class="queue-actions" id="convert-queue-actions" hidden>
+          <button class="btn btn-small" data-pick="files">파일 추가</button>
+          <button class="btn btn-small" data-pick="folder">폴더 추가</button>
+          <button class="link" id="convert-clear">목록 비우기</button>
+        </div>
+      </div>
+
+      <div class="options">
+        <fieldset class="field">
+          <legend>저장 위치</legend>
+          <label class="choice"><input type="radio" name="dest" value="beside" checked> 원본 문서 옆</label>
+          <label class="choice"><input type="radio" name="dest" value="folder"> 다른 폴더</label>
+          <div class="pathline" id="dest-folder-line" hidden>
+            <code id="dest-folder" class="path">폴더를 고르세요</code>
+            <button class="btn btn-small" id="dest-pick">폴더 선택</button>
+          </div>
+          <p class="hint" id="dest-hint">폴더를 넣으면 하위 폴더 구조를 유지합니다.</p>
+        </fieldset>
+        <div class="field">
+          <label for="pages">쪽 범위</label>
+          <input id="pages" placeholder="비우면 전체 · 예: 1-3, 1,3,5" data-testid="pages">
+          <label class="choice"><input type="checkbox" id="overwrite" data-testid="overwrite"> 이미 있는 .md 덮어쓰기</label>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="convert-run" data-testid="convert-run" disabled>변환 실행</button>
+        <button class="btn" id="convert-cancel" hidden>취소</button>
+      </div>
+
+      <div class="report" id="convert-report" data-testid="convert-report" hidden>
+        <div class="progress"><div class="progress-bar" id="convert-bar"></div></div>
+        <p class="report-line" id="convert-status"></p>
+        <div class="summary" id="convert-summary" hidden>
+          <div class="seal" id="seal" aria-hidden="true"><span>완료</span></div>
+          <div>
+            <p class="summary-title" id="summary-title"></p>
+            <p class="summary-sub" id="summary-sub"></p>
+          </div>
+        </div>
+        <ul class="failures" id="convert-failures"></ul>
+      </div>
+    </section>
+
+    <!-- 신구대조 -->
+    <section class="panel" id="panel-compare" role="tabpanel" hidden>
+      <header class="panel-head">
+        <h1>신구대조</h1>
+        <p>현행 문서와 개정 문서를 비교해 바뀐 부분만 대조표(.md)로 만듭니다. HWP와 HWPX도 서로 비교할 수 있습니다.</p>
+      </header>
+      <div class="pair">
+        <div class="slot drop" data-slot="compare-a" data-testid="compare-a">
+          <span class="slot-label">현행 문서</span>
+          <code class="path" data-path>끌어다 놓거나 선택하세요</code>
+          <button class="btn btn-small" data-pick-slot>선택</button>
+        </div>
+        <div class="slot drop" data-slot="compare-b" data-testid="compare-b">
+          <span class="slot-label">개정 문서</span>
+          <code class="path" data-path>끌어다 놓거나 선택하세요</code>
+          <button class="btn btn-small" data-pick-slot>선택</button>
+        </div>
+      </div>
+      <div class="pathline out-line">
+        <span class="slot-label">저장 파일</span>
+        <code class="path" id="compare-out">개정 문서를 넣으면 정해집니다</code>
+        <button class="btn btn-small" data-change-out="compare">변경</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="compare-run" data-testid="compare-run" disabled>대조표 만들기</button>
+      </div>
+      <p class="result" id="compare-result" data-testid="compare-result" hidden></p>
+    </section>
+
+    <!-- 양식 추출 -->
+    <section class="panel" id="panel-extract" role="tabpanel" hidden>
+      <header class="panel-head">
+        <h1>양식 추출</h1>
+        <p>양식 문서에서 채워 넣을 칸(빈칸·누름틀) 목록을 뽑습니다. 뽑은 목록은 JSON으로 저장해 양식 채우기에 쓸 수 있습니다.</p>
+      </header>
+      <div class="slot drop wide" data-slot="extract" data-testid="extract-slot">
+        <span class="slot-label">양식 문서</span>
+        <code class="path" data-path>끌어다 놓거나 선택하세요</code>
+        <button class="btn btn-small" data-pick-slot>선택</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="extract-run" data-testid="extract-run" disabled>칸 목록 뽑기</button>
+        <button class="btn" id="extract-save" hidden>JSON으로 저장</button>
+      </div>
+      <p class="result" id="extract-result" hidden></p>
+      <table class="fields" id="extract-table" data-testid="extract-table" hidden>
+        <thead><tr><th>칸 이름</th><th>현재 값</th><th>안내문</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- 양식 채우기 -->
+    <section class="panel" id="panel-fill" role="tabpanel" hidden>
+      <header class="panel-head">
+        <h1>양식 채우기</h1>
+        <p>양식의 칸에 값을 넣어 서식을 그대로 살린 HWPX를 만듭니다.</p>
+      </header>
+      <fieldset class="field inline">
+        <legend>양식</legend>
+        <label class="choice"><input type="radio" name="fill-src" value="file" checked> 내 양식 파일</label>
+        <label class="choice"><input type="radio" name="fill-src" value="gian"> 내장 일반기안문</label>
+        <label class="choice"><input type="radio" name="fill-src" value="gian-simple"> 내장 간이기안문</label>
+      </fieldset>
+      <div class="slot drop wide" data-slot="fill" data-testid="fill-slot">
+        <span class="slot-label">양식 문서</span>
+        <code class="path" data-path>끌어다 놓거나 선택하세요</code>
+        <button class="btn btn-small" data-pick-slot>선택</button>
+      </div>
+      <div class="actions">
+        <button class="btn" id="fill-load" data-testid="fill-load">칸 불러오기</button>
+        <button class="btn" id="fill-json">값 JSON 불러오기</button>
+      </div>
+      <div class="form-grid" id="fill-grid" data-testid="fill-grid"></div>
+      <div class="pathline out-line">
+        <span class="slot-label">저장 파일</span>
+        <code class="path" id="fill-out">칸을 불러오면 정해집니다</code>
+        <button class="btn btn-small" data-change-out="fill">변경</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="fill-run" data-testid="fill-run" disabled>양식 채우기</button>
+      </div>
+      <p class="result" id="fill-result" hidden></p>
+    </section>
+
+    <!-- HWPX 생성 -->
+    <section class="panel" id="panel-generate" role="tabpanel" hidden>
+      <header class="panel-head">
+        <h1>HWPX 생성</h1>
+        <p>Markdown 문서를 공문서 서식의 HWPX로 만듭니다.</p>
+      </header>
+      <div class="slot drop wide" data-slot="generate" data-testid="generate-slot">
+        <span class="slot-label">Markdown 문서</span>
+        <code class="path" data-path>끌어다 놓거나 선택하세요</code>
+        <button class="btn btn-small" data-pick-slot>선택</button>
+      </div>
+      <div class="options">
+        <div class="field">
+          <label for="preset">서식</label>
+          <select id="preset" data-testid="preset">
+            <option>기안문</option><option>보고서</option><option>계획서</option><option>통지</option>
+            <option>회의록</option><option>개조식</option><option>업무보고</option><option>서울방침</option><option>보도자료</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="org">기관명 <span class="hint">(표지가 있는 서식)</span></label>
+          <input id="org" placeholder="예: 대구광역시">
+        </div>
+      </div>
+      <div class="pathline out-line">
+        <span class="slot-label">저장 파일</span>
+        <code class="path" id="generate-out">문서를 넣으면 정해집니다</code>
+        <button class="btn btn-small" data-change-out="generate">변경</button>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" id="generate-run" data-testid="generate-run" disabled>HWPX 만들기</button>
+      </div>
+      <p class="result" id="generate-result" hidden></p>
+    </section>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

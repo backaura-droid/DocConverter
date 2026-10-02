@@ -25,8 +25,8 @@
     "productName": "DocConverter",
     "artifactName": "DocConverter-Setup-${version}.exe",
     "directories": { "output": "dist" },
-    "files": ["src/**/*", "package.json"],
-    "asarUnpack": ["src/main/compare.mjs"],
+    "files": ["src/**/*", "package.json", "README.md"],
+    "asarUnpack": ["src/main/compare.mjs", "src/main/node-shim.cjs"],
     "extraResources": [
       { "from": "engine/node_modules", "to": "engine/node_modules" },
       { "from": "node_modules/npm", "to": "npm" },
