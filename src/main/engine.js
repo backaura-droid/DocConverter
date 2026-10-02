@@ -75,14 +75,14 @@ function createEngine({ userData, bundledDir, npmCli, smokeDir }) {
         if (!fs.readFileSync(out, 'utf8').includes('SMOKE')) throw new Error(`${f} 시험 변환 결과가 비었습니다`);
       }
     } finally {
-      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
     }
   }
 
   async function install(version) {
     const tmp = path.join(enginesDir, `${version}.tmp`);
     const dest = dirOf(version);
-    fs.rmSync(tmp, { recursive: true, force: true });
+    fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
     fs.mkdirSync(tmp, { recursive: true });
     fs.writeFileSync(path.join(tmp, 'package.json'), '{"private":true}');
     try {
@@ -90,10 +90,10 @@ function createEngine({ userData, bundledDir, npmCli, smokeDir }) {
       const r = await run(npmCli, ['install', `kordoc@${version}`, '--no-audit', '--no-fund', '--ignore-scripts', '--prefix', tmp], { cwd: tmp });
       if (r.code !== 0) throw new Error(`엔진 내려받기 실패: ${r.stderr.trim().split('\n').pop()}`);
       await smoke(tmp);
-      fs.rmSync(dest, { recursive: true, force: true });
+      fs.rmSync(dest, { recursive: true, force: true, maxRetries: 5 });
       fs.renameSync(tmp, dest);
     } catch (err) {
-      fs.rmSync(tmp, { recursive: true, force: true });
+      fs.rmSync(tmp, { recursive: true, force: true, maxRetries: 5 });
       throw err;
     }
     switchTo(version);
@@ -104,7 +104,7 @@ function createEngine({ userData, bundledDir, npmCli, smokeDir }) {
   function prune() {
     const s = readState();
     const keep = new Set([s.current, s.previous].filter(Boolean));
-    for (const d of fs.readdirSync(enginesDir)) if (!keep.has(d)) fs.rmSync(path.join(enginesDir, d), { recursive: true, force: true });
+    for (const d of fs.readdirSync(enginesDir)) if (!keep.has(d)) fs.rmSync(path.join(enginesDir, d), { recursive: true, force: true, maxRetries: 5 });
   }
 
   return { active, switchTo, rollback, latest, smoke, install };

@@ -1,5 +1,6 @@
 // 엔진 CLI·스크립트를 Electron 내장 node(ELECTRON_RUN_AS_NODE)로 실행하고 실패 사유를 해석
 const { spawn } = require('node:child_process');
+const path = require('node:path');
 
 const REASONS = {
   ENCRYPTED: '열기 암호가 걸린 문서입니다',
@@ -17,10 +18,12 @@ const REASONS = {
   PARSE_ERROR: '문서 해석에 실패했습니다',
 };
 
+const shim = path.join(__dirname, 'node-shim.cjs').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
+
 // script를 node로 실행 → {code, stdout, stderr}. signal로 취소하면 code는 null
 function run(script, args, { signal, cwd } = {}) {
   return new Promise((resolve) => {
-    const child = spawn(process.execPath, [script, ...args], {
+    const child = spawn(process.execPath, [shim, script, ...args], {
       cwd,
       signal,
       windowsHide: true,
