@@ -8,5 +8,6 @@
 - [x] 6. main.js·preload.js IPC → 검증: `npm start`로 창 표시
 - [x] 7. 화면(frontend-design, SUIT, 다섯 탭, 드롭, README 호버 설명) → 검증: Playwright 라이트·다크 캡처
 - [x] 8. 설치본 빌드(electron-builder NSIS) → 검증: 설치본에서 변환·엔진 확인
-- [ ] 9. 커밋·푸시·GitHub Releases v2.0.0 업로드 → 검증: 릴리스 첨부 파일 확인
-- [ ] 10. 위키 기록(04_앱개발실 wiki/projects/DocConverter/) → 검증: index·log 반영
+- [x] 9. 커밋·푸시·GitHub Releases v2.0.0 업로드 → 검증: 릴리스 첨부 파일 확인(254,260,779바이트, 로컬과 일치)
+- [x] 10. 위키 기록(04_앱개발실 wiki/projects/DocConverter/) → 검증: index·log 반영
+- [x] 11. (추가) VC++ 런타임 없는 PC 대비 DLL 동봉 → 검증: 설치본에서 동봉 DLL이 로드되는지 `process.report`로 확인

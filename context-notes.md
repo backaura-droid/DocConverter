@@ -8,6 +8,8 @@
 - **임시 파일 복사 제거**: 구버전 로그를 보면 원본을 `tmpXXXX.hwpx`로 복사해 변환했다. 4.18.3에서 한글·공백 경로를 직접 넘겨도 정상 변환되는 것을 확인했다.
 - **같은 이름 충돌**: `보고서.hwp`와 `보고서.pdf`가 같은 폴더에 있으면 둘 다 `보고서.md`가 되어 하나가 덮이고, 그림 폴더도 섞인다. 이 경우 `_확장자` 접미사를 붙인다.
 
+- **VC++ 런타임 동봉**: 다른 PC에서도 동작하는지 사용자가 물어 네이티브 모듈의 가져오기 DLL을 조사했다. onnxruntime(OCR)만 `MSVCP140*.dll`·`VCRUNTIME140*.dll`에 의존하고, Electron·sharp·canvas는 의존하지 않는다. `vcruntime/`의 DLL 5개(System32 14.50.35719.0 사본)를 onnxruntime 모듈 옆에 둔다. 내장 엔진은 `npm run engine`에서, 업데이트 엔진은 `install()`에서 배치한다. PATH 추가 방식은 Chromium이 DLL 검색 경로를 제한할 수 있어 쓰지 않았다. 모듈과 같은 폴더에 두는 방식은 `onnxruntime.dll`이 이미 그렇게 로드되고 있어 확실하다.
+
 ## 시행착오
 
 - **`fill -j`에 BOM 있는 JSON을 주면 실패**: PowerShell `Out-File -Encoding utf8`로 만든 JSON을 넘기면 `[kordoc] 오류: 문서 처리 중 오류가 발생했습니다`(exit 1)가 난다. BOM 없는 UTF-8로 쓰면 정상이다. 앱은 값 JSON을 직접(BOM 없이) 쓰고, 사용자가 불러온 JSON은 BOM을 제거한 뒤 다시 쓴다.
