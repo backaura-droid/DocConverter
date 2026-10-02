@@ -1,16 +1,16 @@
 // 화면 시험: 앱을 띄워 폴더 드롭 → 일괄 변환 → 도장 표시를 확인하고 라이트·다크 화면을 캡처
-// 사용법: node test/ui.mjs <표본 폴더> <캡처 저장 폴더>
+// 사용법: node test/ui.mjs <표본 폴더> <캡처 저장 폴더> [설치된 DocConverter.exe — 없으면 개발 소스로 실행]
 import { _electron as electron } from 'playwright';
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 
-const [sampleDir, shotDir] = process.argv.slice(2);
+const [sampleDir, shotDir, exe] = process.argv.slice(2);
 fs.mkdirSync(shotDir, { recursive: true });
 const env = { ...process.env };
 delete env.ELECTRON_RUN_AS_NODE; // VSCode 안의 셸은 이 값을 물려받아 Electron이 node로 뜬다
 
-const app = await electron.launch({ args: ['.'], env });
+const app = await electron.launch(exe ? { executablePath: exe, env } : { args: ['.'], env });
 const page = await app.firstWindow();
 page.on('pageerror', (e) => console.error('화면 오류:', e.message));
 page.on('console', (m) => m.type() === 'error' && console.error('콘솔:', m.text()));
