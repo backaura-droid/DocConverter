@@ -12,7 +12,21 @@ function newer(a, b) {
   return false;
 }
 
-function createEngine({ userData, bundledDir, npmCli, smokeDir }) {
+// OCR 모듈(onnxruntime)은 VC++ 런타임이 필요하다. 런타임이 없는 PC에서도 로드되도록 모듈 옆에 DLL을 둔다
+function placeVcRuntime(root, vcDir) {
+  const bin = path.join(root, 'node_modules', 'onnxruntime-node', 'bin');
+  if (!fs.existsSync(bin)) return 0;
+  let n = 0;
+  for (const napi of fs.readdirSync(bin)) {
+    const dest = path.join(bin, napi, 'win32', 'x64');
+    if (!fs.existsSync(dest)) continue;
+    for (const f of fs.readdirSync(vcDir)) fs.copyFileSync(path.join(vcDir, f), path.join(dest, f));
+    n++;
+  }
+  return n;
+}
+
+function createEngine({ userData, bundledDir, npmCli, smokeDir, vcDir }) {
   const enginesDir = path.join(userData, 'engines');
   const stateFile = path.join(userData, 'engine.json');
   const pkgDir = (root) => path.join(root, 'node_modules', 'kordoc');
@@ -89,6 +103,7 @@ function createEngine({ userData, bundledDir, npmCli, smokeDir }) {
       // 스크립트 없이 설치: Windows용 네이티브 모듈은 미리 빌드된 바이너리가 패키지에 들어 있음
       const r = await run(npmCli, ['install', `kordoc@${version}`, '--no-audit', '--no-fund', '--ignore-scripts', '--prefix', tmp], { cwd: tmp });
       if (r.code !== 0) throw new Error(`엔진 내려받기 실패: ${r.stderr.trim().split('\n').pop()}`);
+      if (vcDir) placeVcRuntime(tmp, vcDir);
       await smoke(tmp);
       fs.rmSync(dest, { recursive: true, force: true, maxRetries: 5 });
       fs.renameSync(tmp, dest);
@@ -110,4 +125,4 @@ function createEngine({ userData, bundledDir, npmCli, smokeDir }) {
   return { active, switchTo, rollback, latest, smoke, install };
 }
 
-module.exports = { newer, createEngine };
+module.exports = { newer, createEngine, placeVcRuntime };

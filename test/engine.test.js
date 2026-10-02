@@ -47,6 +47,19 @@ test('설치 엔진이 없거나 깨졌으면 내장 엔진을 쓰고, 되돌리
   assert.strictEqual(e.active().bundled, true);
 });
 
+test('VC++ 런타임 DLL을 onnxruntime 모듈 옆마다 둔다', () => {
+  const { placeVcRuntime } = require('../src/main/engine');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'vc-'));
+  const vcDir = path.join(tmp, 'vc');
+  fs.mkdirSync(vcDir);
+  fs.writeFileSync(path.join(vcDir, 'VCRUNTIME140.dll'), 'x');
+  const x64 = path.join(tmp, 'eng', 'node_modules', 'onnxruntime-node', 'bin', 'napi-v6', 'win32', 'x64');
+  fs.mkdirSync(x64, { recursive: true });
+  assert.strictEqual(placeVcRuntime(path.join(tmp, 'eng'), vcDir), 1);
+  assert.ok(fs.existsSync(path.join(x64, 'VCRUNTIME140.dll')));
+  assert.strictEqual(placeVcRuntime(path.join(tmp, '없는엔진'), vcDir), 0);
+});
+
 test('실패 JSON의 code를 한국어 사유로 바꾼다', () => {
   const out = '{"success":false,"fileType":"hwpx","file":"a.hwpx","error":"암호화된 문서입니다","code":"ENCRYPTED"}\n';
   assert.match(failure(out, ''), /암호/);

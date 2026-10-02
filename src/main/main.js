@@ -15,6 +15,7 @@ const engine = createEngine({
   bundledDir: res('engine', 'engine'),
   npmCli: path.join(res('npm', 'node_modules/npm'), 'bin', 'npm-cli.js'),
   smokeDir: res('smoke', 'resources/smoke'),
+  vcDir: res('vcruntime', 'vcruntime'),
 });
 const compareScript = path.join(__dirname, 'compare.mjs').replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
 

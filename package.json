@@ -11,7 +11,7 @@
     "start": "electron .",
     "test": "node --test \"test/*.test.js\"",
     "test:integration": "node test/integration.mjs",
-    "engine": "npm ci --prefix engine --no-audit --no-fund",
+    "engine": "npm ci --prefix engine --no-audit --no-fund && node scripts/place-vcruntime.cjs",
     "dist": "npm run engine && electron-builder --win nsis"
   },
   "devDependencies": {
@@ -31,7 +31,8 @@
       { "from": "engine/node_modules", "to": "engine/node_modules" },
       { "from": "node_modules/npm", "to": "npm" },
       { "from": "node_modules/npm/node_modules", "to": "npm/node_modules" },
-      { "from": "resources/smoke", "to": "smoke" }
+      { "from": "resources/smoke", "to": "smoke" },
+      { "from": "vcruntime", "to": "vcruntime" }
     ],
     "win": { "target": "nsis", "icon": "build/icon.png" },
     "nsis": {
