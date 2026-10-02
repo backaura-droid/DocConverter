@@ -1,7 +1,7 @@
 {
   "name": "docconverter",
   "productName": "DocConverter",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "kordoc 기반 한국 문서 변환 도구",
   "author": "Backaura",
   "license": "UNLICENSED",
@@ -11,7 +11,7 @@
     "start": "electron .",
     "test": "node --test \"test/*.test.js\"",
     "test:integration": "node test/integration.mjs",
-    "engine": "npm ci --prefix engine --no-audit --no-fund && node scripts/place-vcruntime.cjs",
+    "engine": "npm ci --prefix engine --no-audit --no-fund && node scripts/prepare-engine.cjs",
     "dist": "npm run engine && electron-builder --win nsis"
   },
   "devDependencies": {
@@ -26,6 +26,7 @@
     "artifactName": "DocConverter-Setup-${version}.exe",
     "directories": { "output": "dist" },
     "files": ["src/**/*", "package.json", "README.md"],
+    "electronLanguages": ["ko", "en-US"],
     "asarUnpack": ["src/main/compare.mjs", "src/main/node-shim.cjs"],
     "extraResources": [
       { "from": "engine/node_modules", "to": "engine/node_modules" },

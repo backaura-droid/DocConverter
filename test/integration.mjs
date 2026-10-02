@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const { collect, plan } = require('../src/main/batch.js');
@@ -20,10 +21,16 @@ const engine = createEngine({
   bundledDir: path.join(root, 'engine'),
   npmCli: path.join(root, 'node_modules', 'npm', 'bin', 'npm-cli.js'),
   smokeDir: path.join(root, 'resources', 'smoke'),
+  vcDir: path.join(root, 'vcruntime'),
 });
 
 console.log('내장 엔진 시험 변환…');
 await engine.smoke(engine.active().root);
+
+// 정리(pruneEngine)로 onnxruntime-web을 지워도 수식 OCR 모듈이 불러와지는지
+console.log('수식 OCR 모듈 불러오기…');
+const tf = path.join(engine.active().root, 'node_modules', '@huggingface', 'transformers', 'dist', 'transformers.node.mjs');
+await import(pathToFileURL(tf).href);
 
 console.log('표본 폴더 일괄 변환…');
 const jobs = plan(collect([sampleDir]), { overwrite: true });
@@ -47,6 +54,7 @@ if (installVersion) {
   await engine.install(installVersion);
   assert.strictEqual(engine.active().version, installVersion);
   assert.strictEqual(engine.active().bundled, false);
+  assert.ok(!fs.existsSync(path.join(engine.active().root, 'node_modules', 'onnxruntime-web')), '업데이트 엔진도 정리돼야 함');
   engine.rollback();
   assert.strictEqual(engine.active().bundled, true);
 }

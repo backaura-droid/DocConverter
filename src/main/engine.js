@@ -26,6 +26,21 @@ function placeVcRuntime(root, vcDir) {
   return n;
 }
 
+// 엔진에 딸려 오지만 Windows x64에서는 쓰지 않는 OCR 런타임을 지운다(약 190MB)
+// onnxruntime-web: 수식 OCR용 @huggingface/transformers의 의존성이지만 node 빌드는 코드를 내장하고 onnxruntime-node로 계산한다
+function pruneEngine(root) {
+  const nm = path.join(root, 'node_modules');
+  const rm = (p) => fs.rmSync(p, { recursive: true, force: true, maxRetries: 5 });
+  rm(path.join(nm, 'onnxruntime-web'));
+  const bin = path.join(nm, 'onnxruntime-node', 'bin');
+  if (!fs.existsSync(bin)) return;
+  for (const napi of fs.readdirSync(bin)) {
+    rm(path.join(bin, napi, 'linux'));
+    rm(path.join(bin, napi, 'darwin'));
+    rm(path.join(bin, napi, 'win32', 'arm64'));
+  }
+}
+
 function createEngine({ userData, bundledDir, npmCli, smokeDir, vcDir }) {
   const enginesDir = path.join(userData, 'engines');
   const stateFile = path.join(userData, 'engine.json');
@@ -103,6 +118,7 @@ function createEngine({ userData, bundledDir, npmCli, smokeDir, vcDir }) {
       // 스크립트 없이 설치: Windows용 네이티브 모듈은 미리 빌드된 바이너리가 패키지에 들어 있음
       const r = await run(npmCli, ['install', `kordoc@${version}`, '--no-audit', '--no-fund', '--ignore-scripts', '--prefix', tmp], { cwd: tmp });
       if (r.code !== 0) throw new Error(`엔진 내려받기 실패: ${r.stderr.trim().split('\n').pop()}`);
+      pruneEngine(tmp);
       if (vcDir) placeVcRuntime(tmp, vcDir);
       await smoke(tmp);
       fs.rmSync(dest, { recursive: true, force: true, maxRetries: 5 });
@@ -125,4 +141,4 @@ function createEngine({ userData, bundledDir, npmCli, smokeDir, vcDir }) {
   return { active, switchTo, rollback, latest, smoke, install };
 }
 
-module.exports = { newer, createEngine, placeVcRuntime };
+module.exports = { newer, createEngine, placeVcRuntime, pruneEngine };
