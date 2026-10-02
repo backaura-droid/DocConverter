@@ -10,6 +10,8 @@
 
 - **VC++ 런타임 동봉**: 다른 PC에서도 동작하는지 사용자가 물어 네이티브 모듈의 가져오기 DLL을 조사했다. onnxruntime(OCR)만 `MSVCP140*.dll`·`VCRUNTIME140*.dll`에 의존하고, Electron·sharp·canvas는 의존하지 않는다. `vcruntime/`의 DLL 5개(System32 14.50.35719.0 사본)를 onnxruntime 모듈 옆에 둔다. 내장 엔진은 `npm run engine`에서, 업데이트 엔진은 `install()`에서 배치한다. PATH 추가 방식은 Chromium이 DLL 검색 경로를 제한할 수 있어 쓰지 않았다. 모듈과 같은 폴더에 두는 방식은 `onnxruntime.dll`이 이미 그렇게 로드되고 있어 확실하다.
 
+- **v2.0.1 용량 정리(설치 폴더 787.5MB → 556.4MB, 설치파일 254MB → 170MB)**: 사용자가 "설치된 앱" 목록의 965MB(NSIS가 등록한 `EstimatedSize` 추정치)를 보고 물었다. 실측해 보니 엔진 407MB 중 `onnxruntime-web` 141MB와 `onnxruntime-node`의 리눅스·맥·ARM64 바이너리 약 47MB가 Windows x64에서는 쓰이지 않았다. `onnxruntime-web`은 수식 OCR용 `@huggingface/transformers`의 의존성이지만, node 빌드(`transformers.node.mjs`)는 그 코드를 내장하고 계산은 `onnxruntime-node`로 한다. `pruneEngine()`으로 지우고, 빌드(`scripts/prepare-engine.cjs`)와 엔진 업데이트(`install()`) 양쪽에 적용한다. Electron 언어 파일은 `electronLanguages: ["ko", "en-US"]`로 55개에서 2개로 줄였다(48MB → 1.2MB). 정리한 뒤 수식 OCR 모듈 불러오기, 이미지 OCR, 일괄 변환, 엔진 업데이트를 모두 다시 확인했다.
+
 ## 시행착오
 
 - **`fill -j`에 BOM 있는 JSON을 주면 실패**: PowerShell `Out-File -Encoding utf8`로 만든 JSON을 넘기면 `[kordoc] 오류: 문서 처리 중 오류가 발생했습니다`(exit 1)가 난다. BOM 없는 UTF-8로 쓰면 정상이다. 앱은 값 JSON을 직접(BOM 없이) 쓰고, 사용자가 불러온 JSON은 BOM을 제거한 뒤 다시 쓴다.
