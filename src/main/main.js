@@ -229,6 +229,10 @@ const handlers = {
     return nativeTheme.shouldUseDarkColors ? 'dark' : 'light';
   },
 
+  version() {
+    return app.getVersion();
+  },
+
   setTheme(e, theme) {
     nativeTheme.themeSource = theme;
     fs.writeFileSync(themeFile, JSON.stringify(theme));

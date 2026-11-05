@@ -239,6 +239,7 @@ $('#convert-skip').onclick = () => api.skipFile();
 $('#skip-ocr').onchange = () => api.setSkipOcr($('#skip-ocr').checked);
 
 /* ── 화면 테마 ── */
+api.version().then((v) => ($('#copyright').textContent = `© Backaura · v${v}`));
 const themeSwitch = $('#theme');
 api.theme().then((t) => (themeSwitch.checked = t === 'dark'));
 themeSwitch.onchange = () => api.setTheme(themeSwitch.checked ? 'dark' : 'light');
