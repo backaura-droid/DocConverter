@@ -181,11 +181,16 @@ api.onProgress((m) => {
   $('#convert-bar').style.width = `${(done / m.total) * 100}%`;
   const label = { running: m.note === 'OCR' ? 'OCR로 다시 읽는 중' : '변환 중', done: '완료', skipped: `건너뜀(${m.reason || '이미 있음'})`, failed: '실패' }[m.status];
   $('#convert-status').textContent = `${m.i + 1} / ${m.total} · ${label} · ${base(m.src)}`;
-  if (m.status === 'failed' || (m.status === 'skipped' && m.reason)) addFailure(m.src, m.reason);
+  if (m.status === 'failed' || (m.status === 'skipped' && m.reason)) addFailure(m.src, m.reason, m.status);
+  // 결재란은 진행 중에도 그 자리에서 숫자가 바뀐다
+  $('#g-total').textContent = m.total;
+  if (m.status === 'done') $('#g-ok').textContent = ++convert.ok;
+  $('#g-check').textContent = $('#convert-failures').childElementCount;
 });
 
-function addFailure(src, reason) {
+function addFailure(src, reason, status) {
   const li = document.createElement('li');
+  li.className = status;
   const p = document.createElement('code');
   p.className = 'path';
   setPath(p, src);
@@ -205,6 +210,9 @@ $('#convert-run').onclick = async () => {
   $('#convert-report').hidden = false;
   $('#convert-summary').hidden = true;
   $('#convert-failures').replaceChildren();
+  convert.ok = 0;
+  for (const id of ['#g-total', '#g-ok', '#g-check']) $(id).textContent = '0';
+  $('#seal').hidden = true;
   $('#convert-bar').style.width = '0';
   $('#convert-status').textContent = '변환할 문서를 찾는 중…';
   try {
@@ -249,6 +257,10 @@ function showSummary(r) {
   seal.classList.toggle('partial', listed > 0 || r.canceled);
   $('span', seal).textContent = r.canceled ? '취소' : listed ? '확인' : '완료';
   $('#convert-summary').hidden = false;
+  $('#g-total').textContent = r.total;
+  $('#g-ok').textContent = r.ok;
+  $('#g-check').textContent = listed;
+  seal.hidden = false;
   seal.classList.remove('stamp');
   void seal.offsetWidth; // 애니메이션 다시 시작
   seal.classList.add('stamp');

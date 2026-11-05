@@ -28,7 +28,7 @@ for (const theme of ['dark', 'light']) {
   if ((await page.isChecked('[data-testid=theme-toggle]')) !== (theme === 'dark')) await page.click('[data-testid=theme-toggle]');
   await page.waitForTimeout(400);
   assert.strictEqual(await page.evaluate(() => api.theme()), theme);
-  assert.strictEqual(await bg(), theme === 'dark' ? 'rgb(18, 21, 27)' : 'rgb(238, 240, 242)', `${theme} 배경색`);
+  assert.strictEqual(await bg(), theme === 'dark' ? 'rgb(18, 20, 23)' : 'rgb(236, 238, 241)', `${theme} 배경색`);
   await page.screenshot({ path: path.join(shotDir, `00-테마스위치-${theme}.png`) });
 }
 await page.evaluate((t) => api.setTheme(t), themeBefore);
