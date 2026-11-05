@@ -16,6 +16,8 @@
 - **지금 파일 건너뛰기**: 파일마다 `AbortController`를 두고 `AbortSignal.any([전체 취소, 파일 취소])`로 엔진 프로세스를 끊는다. `skipOcr`는 모듈 변수로 두고 체크가 바뀔 때마다 `setSkipOcr` IPC로 갱신해 남은 파일부터 적용한다.
 - **테마 스위치**: CSS는 이미 `prefers-color-scheme`로 다크 색을 갖고 있어서 `nativeTheme.themeSource`만 바꾼다. 선택은 `userData/theme.json`에 두고 창을 만들기 전에 적용한다(창 배경색도 맞춤). 처음엔 왼쪽 메뉴 아래에 뒀으나 최소 창(760×560)에서 "새 엔진" 안내가 뜨면 화면 밖으로 밀려 작업 영역 오른쪽 위로 옮겼다.
 
+- **우클릭 "MD로 변환"(v2.0.3, 2026-11-05)**: 사용자가 창 없는 백그라운드 변환과, 같은 이름 .md가 있으면 `이름 (1).md`·`이름 (2).md`로 만드는 방식을 골랐다(앱 일괄 변환의 "건너뛰기" 기본값과 다르다). 탐색기는 여러 파일을 골라도 파일마다 `DocConverter.exe --to-md "%1"`을 따로 띄운다. 그래서 `--to-md` 모드에서만 `requestSingleInstanceLock({ files })`을 잡는다. 먼저 뜬 프로세스가 `second-instance`의 `additionalData`로 나머지 파일을 받아 차례로 처리하고, 끝나면 알림 하나를 띄운 뒤 종료한다. argv 대신 `additionalData`를 쓰는 이유는 두 번째 인스턴스의 argv에 Chromium이 스위치를 덧붙일 수 있기 때문이다. 일반 창 모드는 잠금을 잡지 않으므로 앱을 켜 둔 채로 우클릭해도 서로 간섭하지 않는다. 대기열이 비면 1.5초 더 기다린 뒤 잠금을 푼다. 그보다 늦게 뜬 프로세스는 스스로 첫 프로세스가 된다(알림이 둘로 나뉠 수 있음). 메뉴 등록은 `build/installer.nsh`의 `customInstall`·`customUnInstall`에서 `SHCTX`로 한다(전체 사용자 설치면 HKLM). 한글 메뉴 이름 때문에 nsh는 BOM 있는 UTF-8로 저장한다. 메뉴 동작 방식 기본값(Document)은 한 번에 15개까지만 실행한다.
+
 ## 시행착오
 
 - **`fill -j`에 BOM 있는 JSON을 주면 실패**: PowerShell `Out-File -Encoding utf8`로 만든 JSON을 넘기면 `[kordoc] 오류: 문서 처리 중 오류가 발생했습니다`(exit 1)가 난다. BOM 없는 UTF-8로 쓰면 정상이다. 앱은 값 JSON을 직접(BOM 없이) 쓰고, 사용자가 불러온 JSON은 BOM을 제거한 뒤 다시 쓴다.

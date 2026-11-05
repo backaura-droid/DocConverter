@@ -4,7 +4,7 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { collect, plan } = require('../src/main/batch');
+const { collect, plan, freeName } = require('../src/main/batch');
 
 function tree(files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), '배치 시험-'));
@@ -62,4 +62,10 @@ test('출력이 이미 있으면 건너뛰고, 덮어쓰기면 건너뛰지 않�
 test('같은 파일을 두 번 넣어도 한 번만 처리한다', () => {
   const root = tree(['a.hwp']);
   assert.strictEqual(collect([root, path.join(root, 'a.hwp')]).length, 1);
+});
+
+test('우클릭 변환: 같은 이름 .md가 있으면 " (1)", " (2)"를 붙인 빈 이름을 준다', () => {
+  const root = tree(['보고서 (최종).md', '보고서 (최종) (1).md']);
+  assert.strictEqual(freeName(path.join(root, '새 문서.md')), path.join(root, '새 문서.md'));
+  assert.strictEqual(freeName(path.join(root, '보고서 (최종).md')), path.join(root, '보고서 (최종) (2).md'));
 });

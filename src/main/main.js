@@ -1,9 +1,9 @@
 // DocConverter 메인 프로세스: 창 생성·IPC·엔진 관리·작업 실행
-const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, nativeTheme, Notification } = require('electron');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { collect, plan } = require('./batch');
+const { collect, plan, freeName, supported } = require('./batch');
 const { run, failure, failureCode } = require('./runner');
 const { newer, createEngine } = require('./engine');
 
@@ -238,7 +238,59 @@ const handlers = {
 let convertAbort;
 let fileAbort;
 let skipOcr = false;
-for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(name, fn);
 
-app.whenReady().then(createWindow);
-app.on('window-all-closed', () => app.quit());
+// 탐색기 우클릭 "MD로 변환"(--to-md 파일): 창 없이 원본 옆에 .md를 만들고(같은 이름이 있으면 " (1)"…), 끝나면 알림 하나로 알린다
+// 여러 파일을 골라 누르면 탐색기가 파일마다 프로세스를 띄운다. 먼저 뜬 프로세스가 나머지 파일을 받아 차례로 처리한다
+function toMdMode(files) {
+  if (!app.requestSingleInstanceLock({ files })) return app.quit();
+  const queue = [...files];
+  app.on('second-instance', (e, argv, cwd, data) => queue.push(...(data?.files || [])));
+  app.setAppUserModelId('com.backaura.docconverter');
+
+  async function toMd(src) {
+    if (!fs.existsSync(src) || !supported(src)) throw new Error('지원하지 않는 형식입니다');
+    const out = freeName(path.join(path.dirname(src), `${path.parse(src).name}.md`));
+    const { cli: cliPath } = engine.active();
+    let r = await run(cliPath, [src, '-o', out, '--silent']);
+    // 스캔 PDF는 OCR로 한 번 더 시도(첫 사용 때 모델 약 18MB 내려받음)
+    if (r.code !== 0 && failureCode(r.stdout) === 'IMAGE_BASED_PDF') r = await run(cliPath, [src, '-o', out, '--silent', '--ocr']);
+    if (r.code !== 0) throw new Error(failure(r.stdout, r.stderr));
+    return out;
+  }
+
+  app.whenReady().then(async () => {
+    const done = [];
+    const failed = [];
+    for (;;) {
+      while (queue.length) {
+        const src = queue.shift();
+        try {
+          done.push(await toMd(src));
+        } catch (err) {
+          failed.push(`${path.basename(src)}: ${err.message}`);
+        }
+      }
+      // ponytail: 탐색기가 나머지 프로세스를 띄우는 동안 1.5초 더 받는다. 그 뒤에 뜬 프로세스는 스스로 첫 프로세스가 되어 따로 처리한다
+      await new Promise((r) => setTimeout(r, 1500));
+      if (!queue.length) break;
+    }
+    app.releaseSingleInstanceLock();
+
+    const lines = failed.length ? failed : done.map((p) => path.basename(p));
+    const more = lines.length > 5 ? `\n…외 ${lines.length - 5}개` : '';
+    new Notification({
+      title: failed.length ? `MD 변환: ${done.length}개 완료, ${failed.length}개 실패` : `MD 변환 완료 (${done.length}개)`,
+      body: lines.slice(0, 5).join('\n') + more,
+    }).show();
+    setTimeout(() => app.quit(), 1000); // 알림이 전달될 시간을 둔다
+  });
+}
+
+const toMdAt = process.argv.indexOf('--to-md');
+if (toMdAt !== -1) {
+  toMdMode(process.argv.slice(toMdAt + 1));
+} else {
+  for (const [name, fn] of Object.entries(handlers)) ipcMain.handle(name, fn);
+  app.whenReady().then(createWindow);
+  app.on('window-all-closed', () => app.quit());
+}

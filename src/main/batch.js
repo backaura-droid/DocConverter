@@ -47,4 +47,12 @@ function plan(items, { outDir, overwrite } = {}) {
   });
 }
 
-module.exports = { EXTS, collect, plan };
+// 우클릭 변환용: out이 이미 있으면 덮어쓰지 않고 "이름 (1).md", "이름 (2).md"… 중 빈 이름을 준다
+function freeName(out) {
+  const { dir, name, ext } = path.parse(out);
+  let p = out;
+  for (let n = 1; fs.existsSync(p); n++) p = path.join(dir, `${name} (${n})${ext}`);
+  return p;
+}
+
+module.exports = { EXTS, collect, plan, freeName, supported };
