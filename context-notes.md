@@ -18,6 +18,8 @@
 
 - **우클릭 "MD로 변환"(v2.0.3, 2026-11-05)**: 사용자가 창 없는 백그라운드 변환과, 같은 이름 .md가 있으면 `이름 (1).md`·`이름 (2).md`로 만드는 방식을 골랐다(앱 일괄 변환의 "건너뛰기" 기본값과 다르다). 탐색기는 여러 파일을 골라도 파일마다 `DocConverter.exe --to-md "%1"`을 따로 띄운다. 그래서 `--to-md` 모드에서만 `requestSingleInstanceLock({ files })`을 잡는다. 먼저 뜬 프로세스가 `second-instance`의 `additionalData`로 나머지 파일을 받아 차례로 처리하고, 끝나면 알림 하나를 띄운 뒤 종료한다. argv 대신 `additionalData`를 쓰는 이유는 두 번째 인스턴스의 argv에 Chromium이 스위치를 덧붙일 수 있기 때문이다. 일반 창 모드는 잠금을 잡지 않으므로 앱을 켜 둔 채로 우클릭해도 서로 간섭하지 않는다. 대기열이 비면 1.5초 더 기다린 뒤 잠금을 푼다. 그보다 늦게 뜬 프로세스는 스스로 첫 프로세스가 된다(알림이 둘로 나뉠 수 있음). 메뉴 등록은 `build/installer.nsh`의 `customInstall`·`customUnInstall`에서 `SHCTX`로 한다(전체 사용자 설치면 HKLM). 한글 메뉴 이름 때문에 nsh는 BOM 있는 UTF-8로 저장한다. 메뉴 동작 방식 기본값(Document)은 한 번에 15개까지만 실행한다.
 
+- **v2.1.0 디자인 교체(2026-11-05)**: 사용자가 "단조롭다"며 시안 5개를 요청했다. impeccable·frontend-design 스킬을 쓰기로 했고, 등기우편·결재판·출발 안내판·색인 탭 매뉴얼·핀테크 카드형을 실제 창 크기로 만들어 보였다. 사용자는 출발 안내판에 결재판의 결재란을 얹는 조합을 골랐다. 남길 것은 인주 도장, 왼쪽 메뉴 구성, 라이트·다크 스위치, SUIT였다. 도장은 결재란 완료 칸으로 옮겼고(크기 76→40px), 테마 스위치는 결재란에 자리를 내주고 메뉴 맨 아래로 옮겼다. 색 규칙은 `DESIGN.md`, 방향 계약은 `.impeccable/surfaces/`에 있다. 바닥의 버전 표기가 `v2.0.2`로 하드코딩돼 v2.0.3에도 그대로 나갔다. 그래서 `version` IPC(`app.getVersion()`)로 읽게 바꿨다.
+
 ## 시행착오
 
 - **`fill -j`에 BOM 있는 JSON을 주면 실패**: PowerShell `Out-File -Encoding utf8`로 만든 JSON을 넘기면 `[kordoc] 오류: 문서 처리 중 오류가 발생했습니다`(exit 1)가 난다. BOM 없는 UTF-8로 쓰면 정상이다. 앱은 값 JSON을 직접(BOM 없이) 쓰고, 사용자가 불러온 JSON은 BOM을 제거한 뒤 다시 쓴다.
@@ -27,6 +29,7 @@
 - **`hidden` 속성이 `.btn{display:inline-flex}`에 덮여 보임**: 변환이 끝나도 취소 버튼이 남았다. 전역으로 `[hidden]{display:none !important}`를 넣었다.
 - **contextBridge 전역과 같은 이름의 최상위 `const` 금지**: `const api = window.api`가 `Identifier 'api' has already been declared`로 렌더러 스크립트 전체를 멈췄다. 전역 `api`를 그대로 쓴다.
 - **PowerShell 5.1로 UTF-8 파일을 고치지 말 것**: `Get-Content`가 BOM 없는 UTF-8을 ANSI로 읽어 package.json의 한글이 깨졌다. 파일 수정은 Edit 도구로 하거나 `[IO.File]::ReadAllText/WriteAllText`(UTF8 BOM 없음)를 쓴다.
+- **메뉴에 스크롤을 주면 호버 설명이 잘린다**: 최소 창(760×560)에서 메뉴 맨 아래로 옮긴 테마 스위치가 화면 밖으로 밀렸다. `.rail`에 `overflow-y: auto`를 주면 가로도 잘려서 오른쪽으로 뜨는 호버 설명이 사라진다. 그래서 창 높이 660 이하에서는 부제 줄을 숨기는 방식으로 해결했다.
 - **화면 캡처는 색 전환이 끝난 뒤에**: `emulateMedia` 직후 바로 캡처하면 transition 중간색(다크인데 흰 상자)이 찍힌다. 400ms 기다린 뒤 캡처한다.
 
 - **electron-builder `extraResources`는 안쪽 `node_modules`를 빼고 복사한다**: 설치본에서 `resources/npm`만 깨져 `Cannot find module 'graceful-fs'`가 났다(개발 환경에서는 통과). `node_modules/npm/node_modules`를 별도 항목으로 추가해 해결했다. 내장 엔진은 `from`이 `node_modules` 자체라 중첩 폴더 4개가 그대로 들어갔다. 설치본을 만들면 반드시 **설치된 exe**로 npm과 엔진을 한 번씩 실행해 본다.
